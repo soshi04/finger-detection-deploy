@@ -1,0 +1,12 @@
+{
+    "projects": {
+      "framework": "vite"
+    },
+    "rewrites": [
+      {
+        "source": "/api/(.*)",
+        "destination": "/backend/api/$1"
+      }
+    ]
+  }
+  

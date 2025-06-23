@@ -15,7 +15,7 @@ const App = () => {
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
     const imageData = canvas.toDataURL("image/jpeg");
 
-    const res = await fetch("http://localhost:5000/predict", {
+    const res = await fetch("/api/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: imageData }),
@@ -33,7 +33,7 @@ const App = () => {
 
     const interval = setInterval(() => {
       captureAndSendFrame();
-    }, 500); // every 0.5s
+    }, 500);
 
     return () => clearInterval(interval);
   }, []);
@@ -64,7 +64,7 @@ const App = () => {
         muted
         width={640}
         height={480}
-        style={{ transform: "scaleX(-1)" }} // ✅ Mirror webcam horizontally
+        style={{ transform: "scaleX(-1)" }}
       />
       <canvas
         ref={canvasRef}
@@ -74,7 +74,7 @@ const App = () => {
           left: 0,
           width: 640,
           height: 480,
-          pointerEvents: "none", // optional: so it doesn't block mouse events
+          pointerEvents: "none", 
         }}
       />
     </div>
