@@ -1,16 +1,23 @@
-# backend/api/predict.py
-
-from ultralytics import YOLO
+import os
 import base64
 import io
-from PIL import Image
 import json
+import requests
+from PIL import Image
 from http import HTTPStatus
+from ultralytics import YOLO
 
-model = YOLO("backend/best.pt")
+MODEL_URL = "https://huggingface.co/soshi04/Finger-Detection/resolve/main/best.pt"
+MODEL_PATH = "/tmp/best.pt"
+
+if not os.path.exists(MODEL_PATH):
+    response = requests.get(MODEL_URL)
+    with open(MODEL_PATH, "wb") as f:
+        f.write(response.content)
+
+model = YOLO(MODEL_PATH)
 
 def handler(request):
-    # Allow CORS
     if request.method == "OPTIONS":
         return {
             "statusCode": 200,
@@ -23,14 +30,12 @@ def handler(request):
 
     try:
         body = request.json()
-        base64_image = body["image"].split(",")[1]  # Remove "data:image/jpeg;base64,"
+        base64_image = body["image"].split(",")[1]
         image_bytes = base64.b64decode(base64_image)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-        # Inference
         results = model.predict(image, imgsz=800)[0]
 
-        # Convert detections to simple JSON
         predictions = []
         for box in results.boxes:
             b = box.xyxy[0].tolist()
@@ -47,7 +52,7 @@ def handler(request):
         return {
             "statusCode": HTTPStatus.OK,
             "headers": {
-                "Access-Control-Allow-Origin": "*",  # ✅ allow frontend
+                "Access-Control-Allow-Origin": "*",
                 "Content-Type": "application/json",
             },
             "body": json.dumps(predictions),
