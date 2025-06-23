@@ -3,8 +3,17 @@ import { useEffect, useRef, useState } from "react";
 const App = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
   const [predictions, setPredictions] = useState<any[]>([]);
+
+  const dataURLtoBlob = (dataURL: string) => {
+    const byteString = atob(dataURL.split(",")[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: "image/jpeg" });
+  };
 
   const captureAndSendFrame = async () => {
     if (!videoRef.current) return;
@@ -15,13 +24,18 @@ const App = () => {
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
     const imageData = canvas.toDataURL("image/jpeg");
 
-    const res = await fetch("/api/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: imageData }),
-    });
-    const data = await res.json();
-    setPredictions(data);
+    try {
+      const res = await fetch("https://soshi04-finger-detection.hf.space/run/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: [imageData] }),
+      });
+
+      const result = await res.json();
+      setPredictions(result.data[0]); // Adjust this if your output is shaped differently
+    } catch (err) {
+      console.error("Error sending frame:", err);
+    }
   };
 
   useEffect(() => {
@@ -33,7 +47,7 @@ const App = () => {
 
     const interval = setInterval(() => {
       captureAndSendFrame();
-    }, 500);
+    }, 1000); // every 1s to prevent spam
 
     return () => clearInterval(interval);
   }, []);
@@ -41,18 +55,22 @@ const App = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || !videoRef.current) return;
+    if (!canvas || !ctx) return;
 
     canvas.width = 640;
     canvas.height = 480;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     predictions.forEach((box) => {
+      const { x1, y1, x2, y2, class: cls, conf } = box;
+
       ctx.strokeStyle = "lime";
       ctx.lineWidth = 2;
-      ctx.strokeRect(box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1);
-      ctx.fillStyle = "lime";
-      ctx.fillText(`Class ${box.class}`, box.x1, box.y1 - 5);
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+      ctx.fillStyle = "black";
+      ctx.font = "16px sans-serif";
+      ctx.fillText(`Class ${cls} (${(conf * 100).toFixed(1)}%)`, x1 + 4, y1 - 6);
     });
   }, [predictions]);
 
@@ -64,7 +82,7 @@ const App = () => {
         muted
         width={640}
         height={480}
-        style={{ transform: "scaleX(-1)" }}
+        style={{ transform: "scaleX(-1)", position: "absolute", top: 0, left: 0 }}
       />
       <canvas
         ref={canvasRef}
@@ -74,7 +92,7 @@ const App = () => {
           left: 0,
           width: 640,
           height: 480,
-          pointerEvents: "none", 
+          pointerEvents: "none",
         }}
       />
     </div>
