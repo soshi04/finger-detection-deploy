@@ -15,7 +15,7 @@ const App = () => {
     const imageData = canvas.toDataURL("image/jpeg");
 
     try {
-      const res = await fetch("https://soshi04-finger-detection.hf.space/run/detect", {
+      const res = await fetch("https://soshi04-finger-detection.hf.space/run/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: [imageData] }),
